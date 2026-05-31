@@ -7,7 +7,7 @@
 ## 📋 Project Overview
 
 **Company:** DeathStar S.A.  
-**Author:** MPI  
+**Author:** Miguel Pérez Ibáñez
 **Repository:** https://github.com/checkers23/Linux-Active-Directory
 
 ---
