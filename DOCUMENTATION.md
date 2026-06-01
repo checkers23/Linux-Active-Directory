@@ -299,13 +299,13 @@ After restarting Samba, each user's access was tested using `smbclient`. The res
 ```bash
 sudo systemctl restart samba-ad-dc
 
-smbclient //localhost/blueprints -U leia%Admin_21    # ✅ leia connects
-smbclient //localhost/blueprints -U anakin%Admin_21  # ❌ anakin denied
-smbclient //localhost/family -U anakin%Admin_21      # ❌ anakin denied
-smbclient //localhost/family -U leia%Admin_21        # ✅ leia connects
-smbclient //localhost/force -U leia%Admin_21         # ❌ leia denied
-smbclient //localhost/force -U anakin%Admin_21       # ✅ anakin connects
-smbclient //localhost/force -U yoda%Admin_21         # ✅ yoda connects
+smbclient //localhost/blueprints -U leia    # ✅ leia connects
+smbclient //localhost/blueprints -U anakin  # ❌ anakin denied
+smbclient //localhost/family -U anakin      # ❌ anakin denied
+smbclient //localhost/family -U leia        # ✅ leia connects
+smbclient //localhost/force -U leia         # ❌ leia denied
+smbclient //localhost/force -U anakin      # ✅ anakin connects
+smbclient //localhost/force -U yoda         # ✅ yoda connects
 ```
 
 ![All access tests showing correct NT_STATUS_ACCESS_DENIED for blocked users and successful connections for allowed users](Images/images-014_comprobaciones_permisos_usuarios.png)
