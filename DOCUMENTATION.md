@@ -331,7 +331,7 @@ nameserver 192.168.1.1
 search deathstar.local
 ```
 
-![resolv.conf on uc01 pointing to 192.168.1.1](Images/images-016_resolv_conf_client.png)
+![resolv.conf on uc01 pointing to 192.168.1.1](Images/images-016_resolv.conf_client.png)
 
 ### Installing Required Packages
 
