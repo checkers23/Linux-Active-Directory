@@ -619,7 +619,7 @@ On srv01, `dns forwarder` was set to forward to ls07:
 dns forwarder = 192.168.1.2 8.8.8.8
 ```
 
-![srv01 smb.conf with dns forwarder pointing to 192.168.1.2](Images/images-032_ParaElTrust_DnsForwarder_srv01.png)
+![srv01 smb.conf with dns forwarder pointing to 192.168.1.2](Images/images-032_ParaElTrust_Añado_DnsForwarder_a_smb-conf_srv01.png)
 
 On ls07, `dns forwarder` was set to forward to srv01:
 
@@ -627,7 +627,7 @@ On ls07, `dns forwarder` was set to forward to srv01:
 dns forwarder = 192.168.1.1 8.8.8.8
 ```
 
-![ls07 smb.conf with dns forwarder pointing to 192.168.1.1](Images/images-033_ParaElTrust_DnsForwarder_ls07.png)
+![ls07 smb.conf with dns forwarder pointing to 192.168.1.1](Images/images-033_ParaElTrust_Añado_DnsForwarder_a_smb-conf_ls07(servidor2).png)
 
 After restarting Samba on both servers, cross-domain DNS resolution was verified before attempting the trust creation.
 
