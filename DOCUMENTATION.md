@@ -413,6 +413,7 @@ Auto-assign public IPv4 was enabled on the subnet so EC2 instances receive a pub
 ![Subnet settings with auto-assign public IPv4 enabled](Images/images-024_Habilitar_IP_Automatica_VPC.png)
 
 A security group called `LAB07-SG` was created with all the ports required for Active Directory: SSH for remote access, DNS (53), Kerberos (88), LDAP (389), SMB (445), LDAPS (636), Global Catalog (3268/3269), and RDP (3389):
+TypeProtocolPortSourcePurposeSSHTCP220.0.0.0/0Remote administration from any IPDNS (TCP)TCP5310.0.0.0/20DNS queries within the VPCDNS (UDP)UDP5310.0.0.0/20DNS queries within the VPCCustom TCPTCP8810.0.0.0/20Kerberos authenticationCustom UDPUDP8810.0.0.0/20Kerberos authenticationLDAPTCP38910.0.0.0/20Active Directory directory queriesSMBTCP44510.0.0.0/20File sharing and domain communicationCustom TCPTCP63610.0.0.0/20LDAPS — encrypted LDAPCustom TCPTCP326810.0.0.0/20Global Catalog queriesCustom TCPTCP326910.0.0.0/20Global Catalog over SSLRDPTCP33890.0.0.0/0Remote desktop accessAll trafficAllAll10.0.0.0/20Internal VPC communication
 
 ![LAB07-SG security group with 12 inbound rules covering all AD ports](Images/images-025_Grupos_De_Seguridad_Y_Reglas.png)
 
