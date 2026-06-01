@@ -176,7 +176,7 @@ sudo systemctl status samba-ad-dc
 
 The resulting `smb.conf` was verified to confirm the domain was correctly configured:
 
-![smb.conf showing DEATHSTAR.LOCAL realm and active directory domain controller role](Images/images-007-smb_conf_srv1.png)
+![smb.conf showing DEATHSTAR.LOCAL realm and active directory domain controller role](Images/images-007-smb.conf_srv1.png)
 
 ---
 
