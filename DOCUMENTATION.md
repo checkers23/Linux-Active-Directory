@@ -363,14 +363,6 @@ id anakin@DEATHSTAR.LOCAL
 
 ![realm join successful, realm list showing configured: kerberos-member, and id commands showing domain UIDs](Images/images-019_Realm_Join.png)
 
-### SSSD Configuration
-
-The `use_fully_qualified_names` setting in `sssd.conf` was set to `False` so users can log in as `leia` instead of having to type `leia@DEATHSTAR.LOCAL`. The `mkhomedir` PAM module was enabled so a home directory is automatically created on first login:
-
-```bash
-sudo systemctl restart sssd
-sudo pam-auth-update --enable mkhomedir
-```
 
 ### Testing Domain Users
 
