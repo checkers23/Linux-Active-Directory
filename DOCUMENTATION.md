@@ -49,7 +49,6 @@ lsblk
 df -h
 ```
 
-> 📸  
 > ![lsblk showing sda at / and sdb at /home](Images/images-001_lsblk_discos.png)
 
 ---
@@ -76,7 +75,8 @@ sudo nano /etc/hosts
 
 > ⚠️ Remove any line with `127.0.1.1` pointing to the old hostname.
 
-> 📸 `images/images-002_hostname_y_etc_hosts.png` — hostnamectl and /etc/hosts
+> 📸 `` — 
+> ![hostnamectl and /etc/hosts](Images/images-002_hostname_y_etc_hosts.png)
 
 ### 2.3 Configure Network Interfaces (Netplan)
 
