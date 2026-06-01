@@ -1,4 +1,4 @@
-# 📖 Documentation — DeathStar S.A. Linux Active Directory
+# 📖 Documentation — Linux Active Directory
 
 > **Author:** Miguel Pérez Ibáñez  
 > **Repository:** https://github.com/checkers23/Linux-Active-Directory
