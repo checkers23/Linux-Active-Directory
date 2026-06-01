@@ -657,8 +657,7 @@ kinit Administrator@LAB07.LAN
 klist
 ```
 
-> **Note:** The `NETLOGON_CONTROL_TC_VERIFY` warning that appears during remote validation is a known Samba 4 limitation and does not affect trust functionality. The important indicators are `TRUST[WERR_OK]` in LocalValidation and the successful cross-domain kinit.
-
+> **Note:** The `NETLOGON_CONTROL_TC_VERIFY` error that appears during remote validation is a known Samba 4 limitation when validating trusts between two Samba domains. It does not affect trust functionality in practice. The definitive indicators that the trust is working correctly are `TRUST[WERR_OK]` in the LocalValidation output and the successful cross-domain `kinit Administrator@LAB07.LAN` which proves authentication across domains is fully operational.
 ![Trust list showing lab07.lan Direction[BOTH], LocalValidation WERR_OK, and kinit to LAB07.LAN returning a valid ticket](Images/images-035_Trust_Comprobaciones_srv01.png)
 
 From ls07, the trust list was also verified to confirm the relationship is registered on both sides:
