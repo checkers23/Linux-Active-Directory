@@ -383,7 +383,7 @@ kinit anakin@DEATHSTAR.LOCAL
 kinit yoda@DEATHSTAR.LOCAL
 ```
 
-![Kerberos tickets successfully obtained for leia, anakin and yoda from uc01](Images/images-020_Prueba_Usuario_Cliente.png)
+![leia@deathstar.local logged into uc01 desktop — whoami confirms domain identity](Images/images-021_Prueba_Usuarios_Cliente_v2.png)
 
 ### Graphical Login with Domain Account
 
@@ -393,8 +393,8 @@ The final test was logging into the desktop graphically with a domain account. T
 whoami   # leia@deathstar.local
 hostname # uc01
 ```
+![Kerberos tickets successfully obtained for leia, anakin and yoda from uc01](Images/images-020_Prueba_Usuario_Cliente.png)
 
-![leia@deathstar.local logged into uc01 desktop — whoami confirms domain identity](Images/images-021_Prueba_Usuarios_Cliente_v2.png)
 
 ---
 
