@@ -1,6 +1,6 @@
 # 📖 Documentation — DeathStar S.A. Linux Active Directory
 
-> **Author:** MPI  
+> **Author:** Miguel Pérez Ibáñez  
 > **Repository:** https://github.com/checkers23/Linux-Active-Directory
 
 ---
