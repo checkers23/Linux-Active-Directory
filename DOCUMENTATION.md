@@ -412,8 +412,22 @@ Auto-assign public IPv4 was enabled on the subnet so EC2 instances receive a pub
 
 ![Subnet settings with auto-assign public IPv4 enabled](Images/images-024_Habilitar_IP_Automatica_VPC.png)
 
-A security group called `LAB07-SG` was created with all the ports required for Active Directory: SSH for remote access, DNS (53), Kerberos (88), LDAP (389), SMB (445), LDAPS (636), Global Catalog (3268/3269), and RDP (3389):
-TypeProtocolPortSourcePurposeSSHTCP220.0.0.0/0Remote administration from any IPDNS (TCP)TCP5310.0.0.0/20DNS queries within the VPCDNS (UDP)UDP5310.0.0.0/20DNS queries within the VPCCustom TCPTCP8810.0.0.0/20Kerberos authenticationCustom UDPUDP8810.0.0.0/20Kerberos authenticationLDAPTCP38910.0.0.0/20Active Directory directory queriesSMBTCP44510.0.0.0/20File sharing and domain communicationCustom TCPTCP63610.0.0.0/20LDAPS — encrypted LDAPCustom TCPTCP326810.0.0.0/20Global Catalog queriesCustom TCPTCP326910.0.0.0/20Global Catalog over SSLRDPTCP33890.0.0.0/0Remote desktop accessAll trafficAllAll10.0.0.0/20Internal VPC communication
+A security group called `LAB07-SG` was created with all the ports required for Active Directory. Each rule was carefully chosen to allow only the necessary traffic for the domain to function:
+
+| Type | Protocol | Port | Source | Purpose |
+|------|----------|------|--------|---------|
+| SSH | TCP | 22 | 0.0.0.0/0 | Remote administration from any IP |
+| DNS (TCP) | TCP | 53 | 10.0.0.0/20 | DNS queries within the VPC |
+| DNS (UDP) | UDP | 53 | 10.0.0.0/20 | DNS queries within the VPC |
+| Custom TCP | TCP | 88 | 10.0.0.0/20 | Kerberos authentication |
+| Custom UDP | UDP | 88 | 10.0.0.0/20 | Kerberos authentication |
+| LDAP | TCP | 389 | 10.0.0.0/20 | Active Directory directory queries |
+| SMB | TCP | 445 | 10.0.0.0/20 | File sharing and domain communication |
+| Custom TCP | TCP | 636 | 10.0.0.0/20 | LDAPS — encrypted LDAP |
+| Custom TCP | TCP | 3268 | 10.0.0.0/20 | Global Catalog queries |
+| Custom TCP | TCP | 3269 | 10.0.0.0/20 | Global Catalog over SSL |
+| RDP | TCP | 3389 | 0.0.0.0/0 | Remote desktop access |
+| All traffic | All | All | 10.0.0.0/20 | Internal VPC communication |
 
 ![LAB07-SG security group with 12 inbound rules covering all AD ports](Images/images-025_Grupos_De_Seguridad_Y_Reglas.png)
 
