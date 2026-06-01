@@ -50,7 +50,7 @@ df -h
 ```
 
 > 📸  
-> ![lsblk showing sda at / and sdb at /home](images/images-001_lsblk_discos.png)
+> ![lsblk showing sda at / and sdb at /home](Images/images-001_lsblk_discos.png)
 
 ---
 
