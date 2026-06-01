@@ -61,7 +61,6 @@ sudo nano /etc/hosts
 192.168.1.1     srv01.deathstar.local srv01
 ```
 
-> **Note:** During initial setup the IP was mistakenly set to `192.168.10.1` and was later corrected to `192.168.1.1`.
 
 ![hostname confirmed as srv01.deathstar.local and /etc/hosts with correct IP](Images/images-002_hostname_y_etc_hosts.png)
 
