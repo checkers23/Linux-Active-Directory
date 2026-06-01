@@ -140,6 +140,8 @@ sudo apt install -y samba samba-ad-dc krb5-user samba-dsdb-modules samba-vfs-mod
 
 When prompted for the Kerberos realm, enter `DEATHSTAR.LOCAL` (uppercase).
 
+> ![kerberos_realm](Images/images-005-kerberos_reino.png)
+
 ### 3.2 Stop Default Services and Clean Config
 
 ```bash
