@@ -338,7 +338,7 @@ search deathstar.local
 The packages needed to join an Active Directory domain were installed. `realmd` handles the domain join process, `sssd` manages authentication and identity lookups, and `adcli` is the low-level tool that communicates with the domain controller:
 
 ```bash
-sudo apt install -y realmd sssd sssd-tools adcli samba-common-bin packagekit krb5-user
+sudo apt install -y realmd sssd sssd-tools adcli samba-common-bin packagekit
 ```
 
 ![Package installation showing realmd, sssd and related packages being installed](Images/images-017_Instalacion_realmssd_Client.png)
