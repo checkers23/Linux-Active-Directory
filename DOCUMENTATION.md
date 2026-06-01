@@ -433,8 +433,10 @@ A security group called `LAB07-SG` was created with all the ports required for A
 
 ### Connecting via SSH from Windows
 
-An EC2 instance named Bespin07 was launched with Ubuntu Server 24.04, type t3.small, static private IP 10.0.1.10, and an Elastic IP 100.55.166.123 assigned for stable public access. An Elastic IP is necessary because EC2 instances get a new public IP every time they restart — by associating a fixed Elastic IP, the server is always reachable at the same address regardless of restarts.
-To connect from Windows, the PEM key file was first downloaded from the AWS Academy interface. In the lab page, clicking AWS Details and then Download PEM gives you the labsuser.pem file which contains the private key for the vockey key pair used when launching the instance.
+An EC2 instance named `Bespin07` was launched with Ubuntu Server 24.04, type `t3.small`, static private IP `10.0.1.10`, and an Elastic IP `100.55.166.123` assigned for stable public access. An Elastic IP is necessary because EC2 instances get a new public IP every time they restart — by associating a fixed Elastic IP, the server is always reachable at the same address regardless of restarts.
+
+To connect from Windows, the PEM key file was first downloaded from the AWS Academy interface. In the lab page, clicking **AWS Details** and then **Download PEM** gives you the `labsuser.pem` file which contains the private key for the `vockey` key pair used when launching the instance.
+
 Before using the key, Windows requires the file permissions to be restricted — SSH will refuse to use a key file that is readable by other users. The following commands were run in CMD to fix the permissions:
 
 ```
