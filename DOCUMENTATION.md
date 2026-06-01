@@ -138,8 +138,8 @@ During installation, a dialog appeared asking for the default Kerberos realm. `D
 Before provisioning the domain, the default Samba services were stopped and disabled to avoid conflicts with `samba-ad-dc`. The default configuration files were also backed up since the provisioning process generates new ones:
 
 ```bash
-sudo systemctl stop smbd nmbd winbind 2>/dev/null || true
-sudo systemctl disable smbd nmbd winbind 2>/dev/null || true
+sudo systemctl stop smbd nmbd winbind 2>/dev/null ||
+sudo systemctl disable smbd nmbd winbind 2>/dev/null ||
 sudo mv /etc/samba/smb.conf /etc/samba/smb.conf.orig
 sudo mv /etc/krb5.conf /etc/krb5.conf.bak
 ```
