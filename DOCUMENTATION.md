@@ -195,7 +195,7 @@ host -t SRV _kerberos._tcp.deathstar.local
 A duplicate DNS entry for the NAT interface IP (`10.0.2.15`) was discovered and removed. This duplicate caused Kerberos to fail because it received a response from the wrong IP. It was cleaned up with:
 
 ```bash
-sudo samba-tool dns delete 127.0.0.1 deathstar.local srv01 A 10.0.2.15 -U Administrator%Admin_21
+sudo samba-tool dns delete 127.0.0.1 deathstar.local srv01 A 10.0.2.15 -U Administrator
 ```
 
 Finally, a Kerberos ticket was requested to confirm the authentication system was working end to end. The realm must always be written in uppercase — using lowercase causes the `KDC reply did not match expectations` error:
