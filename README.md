@@ -1,6 +1,6 @@
 # 🌌 DeathStar S.A. — Linux Active Directory
 
-> Full implementation of a Samba 4 Active Directory infrastructure on Ubuntu Server 22.04. This project covers domain controller setup, Linux client integration, shared folder permissions with ACLs, a secondary domain on AWS EC2, process control via POSIX signals, scheduled tasks with cron, and a bidirectional domain trust relationship.
+> Full implementation of a Samba 4 Active Directory infrastructure on Ubuntu Server 22.04. This project covers domain controller setup, Linux client integration, shared folder permissions with ACLs, a secondary domain on AWS EC2, scheduled tasks with cron, and a bidirectional domain trust relationship.
 
 📖 **[Read the full documentation](DOCUMENTATION.md)**
 
