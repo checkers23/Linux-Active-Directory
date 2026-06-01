@@ -666,7 +666,7 @@ From ls07, the trust list was also verified to confirm the relationship is regis
 sudo samba-tool domain trust list
 ```
 
-![ls07 trust list showing deathstar.local with Direction[BOTH]](Images/images-036_Trust_Comprobaciones_ls07.png)
+![ls07 trust list showing deathstar.local with Direction[BOTH]](Images/images-036_Trust_Comprobaciones_ls07(SERVER2).png)
 
 ---
 
