@@ -1,7 +1,6 @@
-# 📖 Full Documentation — DeathStar S.A.
+# 📖 Documentation — DeathStar S.A. Linux Active Directory
 
-> Step-by-step guide to set up an Ubuntu Server as an Active Directory Domain Controller (Samba 4), join a Linux client, configure shared folders, a secondary AWS server, SSH process control, a cron task, and a trust relationship between domains.
->
+> **Author:** MPI  
 > **Repository:** https://github.com/checkers23/Linux-Active-Directory
 
 ---
@@ -15,54 +14,44 @@
 5. [Domain Users and Groups](#5-domain-users-and-groups)
 6. [Shared Folders with Permissions](#6-shared-folders-with-permissions)
 7. [Linux Client — uc01](#7-linux-client--uc01)
-8. [AWS Server — bespin07 (cloud07.city)](#8-aws-server--bespin07-cloud07city)
+8. [AWS Server — bespin07](#8-aws-server--bespin07)
 9. [SSH Access and Process Control](#9-ssh-access-and-process-control)
 10. [Scheduled Task with Cron](#10-scheduled-task-with-cron)
 11. [Trust Relationship Between Domains](#11-trust-relationship-between-domains)
-12. [Screenshots Index](#12-screenshots-index)
 
 ---
 
 ## 1. Server Preparation — Disks
 
-### VirtualBox VM Setup
+The first step was setting up the virtual machine in VirtualBox with two separate disks. This is a requirement from the project — one disk handles the operating system and the other is dedicated exclusively to user home directories, which is a common practice in production environments to isolate user data from the system.
 
-Before starting the installation, create the VM with:
+The VM was configured with a 20 GB disk for the root filesystem `/` and a 10 GB disk for `/home`. During the Ubuntu Server 22.04 installation, the **Custom storage layout** option was selected to manually assign each disk to its respective mount point.
 
-- **RAM:** 2 GB minimum
-- **Disk 1:** 20 GB → mount point `/`
-- **Disk 2:** 10 GB → mount point `/home`
-- **Network Adapter 1:** NAT
-- **Network Adapter 2:** Internal Network — `intnet`
-
-### Disk Partitioning During Installation
-
-During the Ubuntu Server 22.04 installer, choose **Custom storage layout**:
-
-- `/dev/sda` (20 GB) → mount point `/`
-- `/dev/sdb` (10 GB) → mount point `/home`
-
-### Verify After Boot
+After the system booted, the disk layout was verified with the following commands to confirm both disks were correctly mounted:
 
 ```bash
 lsblk
 df -h
 ```
 
-> ![lsblk showing sda at / and sdb at /home](Images/images-001_lsblk_discos.png)
+![lsblk showing sda mounted at / and sdb at /home](Images/images-001_lsblk_discos.png)
 
 ---
 
 ## 2. Network and Hostname — srv01
 
-### 2.1 Set Hostname
+### Setting the Hostname
+
+Before configuring anything else, the server hostname was set to match the domain structure. This is critical because Samba uses the hostname to register DNS records and build the Kerberos configuration — if the hostname is wrong, the whole domain setup will fail.
 
 ```bash
 sudo hostnamectl set-hostname srv01.deathstar.local
 hostname -f
 ```
 
-### 2.2 Edit /etc/hosts
+### Editing /etc/hosts
+
+The `/etc/hosts` file was edited to map the server's static IP to its fully qualified domain name. This ensures that even before Samba's DNS is running, the system can resolve its own name correctly. Any existing line with `127.0.1.1` pointing to the old hostname was removed, as it would conflict with Kerberos authentication.
 
 ```bash
 sudo nano /etc/hosts
@@ -73,12 +62,13 @@ sudo nano /etc/hosts
 192.168.1.1     srv01.deathstar.local srv01
 ```
 
-> ⚠️ Remove any line with `127.0.1.1` pointing to the old hostname.
+> **Note:** During initial setup the IP was mistakenly set to `192.168.10.1` and was later corrected to `192.168.1.1`.
 
+![hostname confirmed as srv01.deathstar.local and /etc/hosts with correct IP](Images/images-002_hostname_y_etc_hosts.png)
 
-> ![hostnamectl and /etc/hosts](Images/images-002_hostname_y_etc_hosts.png)
+### Configuring Network Interfaces
 
-### 2.3 Configure Network Interfaces (Netplan)
+The server has two network adapters: `enp0s3` connected to NAT for internet access, and `enp0s8` configured with a static IP on the internal network so domain clients can reach it. Netplan was used to set this up:
 
 ```bash
 sudo nano /etc/netplan/00-installer-config.yaml
@@ -102,14 +92,17 @@ network:
           - deathstar.local
 ```
 
+The nameserver is set to `127.0.0.1` because once Samba is running, it will act as the DNS server itself. Google's DNS (`8.8.8.8`) is kept as a fallback for internet resolution.
+
 ```bash
 sudo netplan apply
-ip a
 ```
 
-> ![netplan file and ip a output](Images/images-003-Netplan_configuration_srv1.png)
+![Netplan configuration showing both interfaces](Images/images-003-Netplan_configuration_srv1.png)
 
-### 2.4 Disable systemd-resolved
+### Disabling systemd-resolved
+
+Ubuntu uses `systemd-resolved` by default which listens on port 53 and would conflict with Samba's internal DNS server. It was stopped and disabled, and `/etc/resolv.conf` was replaced with a static file pointing to localhost:
 
 ```bash
 sudo systemctl stop systemd-resolved
@@ -124,25 +117,27 @@ nameserver 8.8.8.8
 search deathstar.local
 ```
 
+![resolv.conf pointing to 127.0.0.1 as primary DNS](Images/images-004-resolv_conf_srv1.png)
 
-> ![/etc/resolv.conf content](Images/images-004-resolv.conf_srv1.png)
 ---
 
 ## 3. Samba AD DC — Installation and Provisioning
 
-### 3.1 Install Packages
+### Installing the Packages
 
-> ⚠️ **Critical:** Always install packages BEFORE provisioning.
+The Samba packages were installed before running the domain provisioning. This order is critical — if provisioning is run first and the `samba-ad-dc` package is installed afterwards, the domain configuration will be incomplete and Kerberos will not work.
 
 ```bash
 sudo apt install -y samba samba-ad-dc krb5-user samba-dsdb-modules samba-vfs-modules winbind
 ```
 
-When prompted for the Kerberos realm, enter `DEATHSTAR.LOCAL` (uppercase).
+During installation, a dialog appeared asking for the default Kerberos realm. `DEATHSTAR.LOCAL` was entered in uppercase, which is required by Kerberos.
 
-> ![kerberos_realm](Images/images-005-kerberos_reino.png)
+![Kerberos realm set to DEATHSTAR.LOCAL during package installation](Images/images-005-kerberos_reino.png)
 
-### 3.2 Stop Default Services and Clean Config
+### Cleaning Up Before Provisioning
+
+Before provisioning the domain, the default Samba services were stopped and disabled to avoid conflicts with `samba-ad-dc`. The default configuration files were also backed up since the provisioning process generates new ones:
 
 ```bash
 sudo systemctl stop smbd nmbd winbind 2>/dev/null || true
@@ -151,7 +146,9 @@ sudo mv /etc/samba/smb.conf /etc/samba/smb.conf.orig
 sudo mv /etc/krb5.conf /etc/krb5.conf.bak
 ```
 
-### 3.3 Provision the Domain
+### Provisioning the Domain
+
+The domain was provisioned using `samba-tool`. This single command sets up the entire Active Directory structure including DNS zones, Kerberos configuration, LDAP directory, and Sysvol:
 
 ```bash
 sudo samba-tool domain provision \
@@ -163,9 +160,13 @@ sudo samba-tool domain provision \
   --dns-backend=SAMBA_INTERNAL
 ```
 
-> ![full output of samba-tool domain provision](Images/images-006-Domain_Provision_srv1.png)
+The `--use-rfc2307` flag enables POSIX attributes like UID and GID which are needed for Linux clients. `SAMBA_INTERNAL` was chosen as the DNS backend so Samba handles all DNS resolution internally without needing BIND.
 
-### 3.4 Copy Kerberos Config and Enable Service
+![Full domain provision output showing all components being set up](Images/images-006-Domain_Provision_srv1.png)
+
+### Starting the Service
+
+After provisioning, the Kerberos configuration generated by Samba was copied to the system location, and the service was enabled and started:
 
 ```bash
 sudo cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
@@ -174,48 +175,44 @@ sudo systemctl enable --now samba-ad-dc
 sudo systemctl status samba-ad-dc
 ```
 
-> ![Kerberos realm configuration](Images/images-005-kerberos_reino.png)
+The resulting `smb.conf` was verified to confirm the domain was correctly configured:
+
+![smb.conf showing DEATHSTAR.LOCAL realm and active directory domain controller role](Images/images-007-smb_conf_srv1.png)
 
 ---
 
 ## 4. Domain and Kerberos Verification
 
-### 4.1 Check DNS Records
+Once Samba was running, a series of checks were performed to confirm the domain was working correctly. The DNS records were verified to ensure clients would be able to discover the domain controller:
 
 ```bash
+sudo samba-tool domain level show
+sudo samba-tool domain info 127.0.0.1
 host -t A srv01.deathstar.local
 host -t SRV _ldap._tcp.deathstar.local
 host -t SRV _kerberos._tcp.deathstar.local
 ```
 
-### 4.2 Check Active Ports
-
-```bash
-sudo ss -tulnp | grep -E ':(53|88|389|445|636|3268)'
-```
-
-### 4.3 Remove Duplicate DNS Entry (NAT IP)
-
-If `host -t A srv01.deathstar.local` shows the NAT IP (10.0.2.15), remove it:
+A duplicate DNS entry for the NAT interface IP (`10.0.2.15`) was discovered and removed. This duplicate caused Kerberos to fail because it received a response from the wrong IP. It was cleaned up with:
 
 ```bash
 sudo samba-tool dns delete 127.0.0.1 deathstar.local srv01 A 10.0.2.15 -U Administrator%Admin_21
 ```
 
-### 4.4 Test Kerberos
-
-> ⚠️ Always use UPPERCASE for the realm.
+Finally, a Kerberos ticket was requested to confirm the authentication system was working end to end. The realm must always be written in uppercase — using lowercase causes the `KDC reply did not match expectations` error:
 
 ```bash
 kinit Administrator@DEATHSTAR.LOCAL
 klist
 ```
 
-> ![ klist with Administrator ticket](Images/images-008_Kerberos_pruebas_srv1.png)
+![Domain info, DNS SRV records, and successful Kerberos ticket for Administrator@DEATHSTAR.LOCAL](Images/images-008_Kerberos_pruebas_srv1.png)
 
 ---
 
 ## 5. Domain Users and Groups
+
+Three domain users were created for the shared folder permissions: `leia`, `anakin`, and `yoda`. A security group called `jedis` was also created and `anakin` and `yoda` were added to it. This group membership is later used to control access to the `force` shared folder:
 
 ```bash
 sudo samba-tool user create leia Admin_21
@@ -228,49 +225,47 @@ sudo samba-tool group list
 sudo samba-tool group listmembers jedis
 ```
 
->  ![user list, group list and jedis members](Images/images-009_creacion_usuarios_carpetas.png) 
+![Users leia, anakin, yoda created and anakin/yoda added to jedis group](Images/images-009_creacion_usuarios.png)
+
+![User list and folder creation commands](Images/images-009_creacion_usuarios_carpetas.png)
 
 ---
 
 ## 6. Shared Folders with Permissions
 
-### 6.1 Create Directories
+Three shared folders were configured with different access rules using a combination of Linux filesystem permissions and Samba share definitions.
+
+### Creating the Directories and Setting Permissions
+
+The directories were created and permissions were applied using `chown`, `chmod`, and ACLs via `setfacl`. ACLs allow fine-grained per-user permissions on top of standard Linux permissions, which is necessary to block specific users while allowing others:
 
 ```bash
 sudo mkdir -p /deathstar/blueprints
 sudo mkdir -p /sw/family
 sudo mkdir -p /sw/force
-```
 
-### 6.2 Set Permissions
-
-```bash
 # blueprints — private, leia only
 sudo chown root:root /deathstar/blueprints
 sudo chmod 770 /deathstar/blueprints
-setfacl -m u:leia:rwx /deathstar/blueprints
+sudo setfacl -m u:leia:rwx /deathstar/blueprints
 
 # family — public, anakin denied
 sudo chown root:"Domain Users" /sw/family
 sudo chmod 775 /sw/family
-setfacl -m u:anakin:--- /sw/family
+sudo setfacl -m u:anakin:--- /sw/family
 
 # force — public, read-only, leia denied
 sudo chown root:"Domain Users" /sw/force
 sudo chmod 775 /sw/force
-setfacl -m u:anakin:r-x /sw/force
-setfacl -m u:yoda:r-x /sw/force
-setfacl -m g:jedis:r-x /sw/force
-setfacl -m u:leia:--- /sw/force
+sudo setfacl -m u:anakin:r-x /sw/force
+sudo setfacl -m u:yoda:r-x /sw/force
+sudo setfacl -m g:jedis:r-x /sw/force
+sudo setfacl -m u:leia:--- /sw/force
 ```
 
-### 6.3 Configure Samba Shares
+### Configuring the Samba Shares
 
-```bash
-sudo nano /etc/samba/smb.conf
-```
-
-Add at the end:
+The `/etc/samba/smb.conf` file was edited to define the three shares with their access rules. `blueprints` has `browseable = no` so it does not appear in network browsing — users must know the exact path to access it. `family` and `force` are public and browseable:
 
 ```ini
 [blueprints]
@@ -295,9 +290,11 @@ Add at the end:
     guest ok = yes
 ```
 
-> ![smb.conf shares configuration](Images/images-010_smb.conf.png)
+![smb.conf showing all three shares with their access rules](Images/images-010_smb_conf.png)
 
-### 6.4 Install Apache for Web Access
+### Making Folders Accessible via Web Browser
+
+Apache was installed and symbolic links were created so the `family` and `force` folders can be browsed from a web browser, as required by the project:
 
 ```bash
 sudo apt install -y apache2
@@ -306,40 +303,35 @@ sudo ln -s /sw/force /var/www/html/force
 sudo systemctl enable --now apache2
 ```
 
-### 6.5 Restart Samba and Verify
+### Verifying Access
+
+After restarting Samba, each user's access was tested using `smbclient`. The results confirmed that all permissions were correctly applied:
 
 ```bash
 sudo systemctl restart samba-ad-dc
+
+smbclient //localhost/blueprints -U leia%Admin_21    # ✅ leia connects
+smbclient //localhost/blueprints -U anakin%Admin_21  # ❌ anakin denied
+smbclient //localhost/family -U anakin%Admin_21      # ❌ anakin denied
+smbclient //localhost/family -U leia%Admin_21        # ✅ leia connects
+smbclient //localhost/force -U leia%Admin_21         # ❌ leia denied
+smbclient //localhost/force -U anakin%Admin_21       # ✅ anakin connects
+smbclient //localhost/force -U yoda%Admin_21         # ✅ yoda connects
 ```
 
-```bash
-# blueprints: leia in, anakin denied
-smbclient //localhost/blueprints -U leia%Admin_21
-smbclient //localhost/blueprints -U anakin%Admin_21
-
-# family: anakin denied, leia in
-smbclient //localhost/family -U anakin%Admin_21
-smbclient //localhost/family -U leia%Admin_21
-
-# force: leia denied, anakin and yoda in
-smbclient //localhost/force -U leia%Admin_21
-smbclient //localhost/force -U anakin%Admin_21
-smbclient //localhost/force -U yoda%Admin_21
-```
-
-> ![smbclient access verification per user](Images/images-014_comprobaciones_permisos_usuarios.png)
+![All access tests showing correct NT_STATUS_ACCESS_DENIED for blocked users and successful connections for allowed users](Images/images-014_comprobaciones_permisos_usuarios.png)
 
 ---
 
 ## 7. Linux Client — uc01
 
-### 7.1 Network Configuration
+### Configuring the Network
 
-Configure network via GUI (NetworkManager):
+The Ubuntu 24.04 desktop client uses NetworkManager instead of Netplan, so the network was configured through the graphical Settings interface. The static IP `192.168.1.3` was assigned, with `192.168.1.1` set as the DNS server so the client can resolve the domain controller:
 
-- Address: `192.168.1.3`
-- Netmask: `255.255.255.0`
-- DNS: `192.168.1.1`
+![Network settings on uc01 — static IP 192.168.1.3 and DNS pointing to srv01](Images/images-015_Configuracion_Red_Cliente.png)
+
+Since NetworkManager sometimes overwrites `/etc/resolv.conf`, it was also manually edited to ensure DNS resolution worked immediately:
 
 ```bash
 sudo nano /etc/resolv.conf
@@ -350,157 +342,124 @@ nameserver 192.168.1.1
 search deathstar.local
 ```
 
->  ![network settings on uc01](Images/images-015_Configuracion_Red_Cliente.png)
-> ![/etc/resolv.conf on client](Images/images-016_resolv.conf_client.png)
+![resolv.conf on uc01 pointing to 192.168.1.1](Images/images-016_resolv_conf_client.png)
 
-### 7.2 Install Required Packages
+### Installing Required Packages
+
+The packages needed to join an Active Directory domain were installed. `realmd` handles the domain join process, `sssd` manages authentication and identity lookups, and `adcli` is the low-level tool that communicates with the domain controller:
 
 ```bash
 sudo apt install -y realmd sssd sssd-tools adcli samba-common-bin packagekit krb5-user
 ```
 
->  ![package installation](Images/images-017_Instalacion_realmssd_Client.png)
+![Package installation showing realmd, sssd and related packages being installed](Images/images-017_Instalacion_realmssd_Client.png)
 
-### 7.3 Discover and Join Domain
+### Discovering and Joining the Domain
+
+Before joining, the domain was discovered to confirm the client could see the domain controller:
 
 ```bash
 realm discover DEATHSTAR.LOCAL
 ```
 
-> 📸 `images/images-018_Realm_Discover.png` — realm discover output
+![realm discover showing DEATHSTAR.LOCAL as a kerberos domain with active-directory software](Images/images-018_Realm_Discover.png)
+
+The client was then joined to the domain. After the join, `realm list` confirmed the client was configured as a `kerberos-member`, and `id` confirmed that domain users were recognized with proper UIDs:
 
 ```bash
 sudo realm join DEATHSTAR.LOCAL -U Administrator
+realm list
+id leia@DEATHSTAR.LOCAL
+id anakin@DEATHSTAR.LOCAL
 ```
 
-> 📸 `images/images-019_Realm_Join.png` — realm join with no errors
+![realm join successful, realm list showing configured: kerberos-member, and id commands showing domain UIDs](Images/images-019_Realm_Join.png)
 
-### 7.4 Configure SSSD and Verify
+### SSSD Configuration
+
+The `use_fully_qualified_names` setting in `sssd.conf` was set to `False` so users can log in as `leia` instead of having to type `leia@DEATHSTAR.LOCAL`. The `mkhomedir` PAM module was enabled so a home directory is automatically created on first login:
 
 ```bash
-sudo nano /etc/sssd/sssd.conf
-# Set: use_fully_qualified_names = False
-
 sudo systemctl restart sssd
 sudo pam-auth-update --enable mkhomedir
 ```
 
+### Testing Domain Users
+
+Kerberos tickets were requested for each domain user to confirm authentication worked from the client:
+
 ```bash
-realm list
-id leia@DEATHSTAR.LOCAL
-id anakin@DEATHSTAR.LOCAL
 kinit leia@DEATHSTAR.LOCAL
+kinit anakin@DEATHSTAR.LOCAL
+kinit yoda@DEATHSTAR.LOCAL
 ```
 
-> 📸 `images/images-020_Prueba_Usuario_Cliente.png` — realm list and id commands
-> 📸 `images/images-021_Prueba_Usuarios_Cliente_v2.png` — domain user login on client GUI
+![Kerberos tickets successfully obtained for leia, anakin and yoda from uc01](Images/images-020_Prueba_Usuario_Cliente.png)
+
+### Graphical Login with Domain Account
+
+The final test was logging into the desktop graphically with a domain account. The session was closed and `leia@DEATHSTAR.LOCAL` was entered at the login screen with password `Admin_21`. After logging in, the terminal confirmed the identity:
+
+```bash
+whoami   # leia@deathstar.local
+hostname # uc01
+```
+
+![leia@deathstar.local logged into uc01 desktop — whoami confirms domain identity](Images/images-021_Prueba_Usuarios_Cliente_v2.png)
 
 ---
 
-## 8. AWS Server — bespin07 (cloud07.city)
+## 8. AWS Server — bespin07
 
-### 8.1 AWS Infrastructure Setup
+### Setting Up the Infrastructure in AWS Academy
 
-**Create VPC:**
+A dedicated virtual network was created in AWS to host the bespin07 server. A VPC with CIDR `10.0.0.0/16` was created with one public subnet, an internet gateway, and DNS enabled. This gives the EC2 instance both a private internal IP and a reachable public IP:
 
-- Name: `LAB07-VPC`
-- CIDR: `10.0.0.0/16`
-- 1 public subnet, no private subnets
-- Enable DNS hostnames and resolution
+![VPC creation form showing LAB07-VPC with 10.0.0.0/16 CIDR and one public subnet](Images/images-022_Creacion_VPC.png)
 
-> 📸 `images/images-022_Creacion_VPC.png` — VPC creation
-> 📸 `images/images-023_Verificacion_VPC.png` — VPC details
-> 📸 `images/images-024_Habilitar_IP_Automatica_VPC.png` — enabling auto-assign public IP
+![VPC details showing LAB07-VPC-vpc with available status, subnet and internet gateway connected](Images/images-023_Verificacion_VPC.png)
 
-**Create Security Group (LAB07-SG)** with these inbound rules:
+Auto-assign public IPv4 was enabled on the subnet so EC2 instances receive a public IP automatically on launch:
 
-| Type | Protocol | Port | Source |
-|------|----------|------|--------|
-| SSH | TCP | 22 | 0.0.0.0/0 |
-| DNS (TCP) | TCP | 53 | 10.0.0.0/20 |
-| DNS (UDP) | UDP | 53 | 10.0.0.0/20 |
-| Custom TCP | TCP | 88 | 10.0.0.0/20 |
-| Custom UDP | UDP | 88 | 10.0.0.0/20 |
-| Custom TCP | TCP | 389 | 10.0.0.0/20 |
-| Custom TCP | TCP | 636 | 10.0.0.0/20 |
-| Custom TCP | TCP | 445 | 10.0.0.0/20 |
-| Custom TCP | TCP | 3268 | 10.0.0.0/20 |
-| Custom TCP | TCP | 3269 | 10.0.0.0/20 |
-| RDP | TCP | 3389 | 0.0.0.0/0 |
-| All traffic | All | All | 10.0.0.0/20 |
+![Subnet settings with auto-assign public IPv4 enabled](Images/images-024_Habilitar_IP_Automatica_VPC.png)
 
-> 📸 `images/images-025_Grupos_De_Seguridad_Y_Reglas.png` — security group rules
+A security group called `LAB07-SG` was created with all the ports required for Active Directory: SSH for remote access, DNS (53), Kerberos (88), LDAP (389), SMB (445), LDAPS (636), Global Catalog (3268/3269), and RDP (3389):
 
-**Launch EC2 Instance:**
+![LAB07-SG security group with 12 inbound rules covering all AD ports](Images/images-025_Grupos_De_Seguridad_Y_Reglas.png)
 
-- Name: `Bespin07`
-- AMI: Ubuntu Server 24.04 LTS
-- Type: t3.small
-- Key pair: vockey
-- VPC: LAB07-VPC
-- Security group: LAB07-SG
-- Storage: 30 GB gp3
-- Private IP: `10.0.1.10` (static)
+### Connecting via SSH from Windows
 
-Assign Elastic IP and associate to instance.
-
-### 8.2 SSH Connection from Windows
-
-Fix PEM file permissions:
+An EC2 instance named `Bespin07` was launched with Ubuntu Server 24.04, type `t3.small`, static private IP `10.0.1.10`, and an Elastic IP `100.55.166.123` for stable public access. To connect from Windows, the PEM key permissions had to be fixed first:
 
 ```
 icacls C:\labsuser.pem /inheritance:r
 icacls C:\labsuser.pem /remove "BUILTIN\Usuarios"
 icacls C:\labsuser.pem /remove "NT AUTHORITY\Usuarios autentificados"
-icacls C:\labsuser.pem /grant:r "migue:R"
-```
-
-Connect:
-
-```
 ssh -i C:\labsuser.pem ubuntu@100.55.166.123
 ```
 
-> 📸 `images/images-026_ssh_desde_windows_a_ec2.png` — SSH session from Windows to EC2
+![SSH connection from Windows CMD to EC2 — Ubuntu 24.04 welcome screen visible](Images/images-026_ssh_desde_windows_a_ec2.png)
 
-### 8.3 Server Configuration
+### Configuring the Server
+
+Once connected, the hostname was set and `/etc/hosts` was configured, following the same process as srv01. The server's private IP `10.0.1.10` was mapped to its FQDN `bespin07.cloud07.city`:
 
 ```bash
 sudo hostnamectl set-hostname bespin07.cloud07.city
 sudo nano /etc/hosts
+# 10.0.1.10   bespin07.cloud07.city bespin07
 ```
 
-```
-127.0.0.1       localhost
-10.0.1.10       bespin07.cloud07.city bespin07
-```
+![hostname -f returning bespin07.cloud07.city and /etc/hosts with correct mapping](Images/images-026_ssh_hostname_etc_hosts_bespin07.png)
 
-```bash
-sudo systemctl stop systemd-resolved
-sudo systemctl disable systemd-resolved
-sudo unlink /etc/resolv.conf
-sudo nano /etc/resolv.conf
-```
+### Installing Samba and Provisioning the Domain
 
-```
-nameserver 127.0.0.1
-nameserver 8.8.8.8
-search cloud07.city
-```
-
-> 📸 `images/images-026_ssh_hostname_etc_hosts_bespin07.png` — hostname and hosts on bespin07
-
-### 8.4 Install Samba and Provision Domain
+The same installation and provisioning process was followed as for srv01, but this time for the `CLOUD07.CITY` domain:
 
 ```bash
 sudo apt install -y samba samba-ad-dc krb5-user samba-dsdb-modules samba-vfs-modules winbind
-```
 
-Realm: `CLOUD07.CITY`
-
-```bash
 sudo systemctl stop smbd nmbd winbind 2>/dev/null || true
-sudo systemctl disable smbd nmbd winbind 2>/dev/null || true
 sudo mv /etc/samba/smb.conf /etc/samba/smb.conf.orig
 sudo mv /etc/krb5.conf /etc/krb5.conf.bak
 
@@ -513,15 +472,20 @@ sudo samba-tool domain provision \
   --dns-backend=SAMBA_INTERNAL
 ```
 
-> 📸 `images/images-027_Aprovisionamiento_bespin01.png` — domain provision output
+![Domain provision output for CLOUD07.CITY showing all components configured](Images/images-027_Aprovisionamiento_bespin01.png)
+
+The Kerberos config was copied and the service was started:
 
 ```bash
 sudo cp /var/lib/samba/private/krb5.conf /etc/krb5.conf
 sudo systemctl unmask samba-ad-dc
 sudo systemctl enable --now samba-ad-dc
+sudo systemctl status samba-ad-dc
 ```
 
-> 📸 `images/images-029_UnMask_Status_bespin01.png` — samba-ad-dc status active
+![samba-ad-dc active (running) on bespin07](Images/images-029_UnMask_Status_bespin01.png)
+
+The DNS was verified and a Kerberos ticket was obtained to confirm everything was working:
 
 ```bash
 host -t A bespin07.cloud07.city 127.0.0.1
@@ -529,9 +493,11 @@ kinit Administrator@CLOUD07.CITY
 klist
 ```
 
-> 📸 `images/images-028_Dns_Kinit_Bespin07.png` — DNS check and Kerberos ticket
+![DNS resolving bespin07 to 10.0.1.10 and Kerberos ticket for Administrator@CLOUD07.CITY](Images/images-028_Dns_Kinit_Bespin07.png)
 
-### 8.5 Create Users and Trap Share
+### Creating Users and the Trap Share
+
+Two users were created: `lando` who is allowed to access the `trap` share, and `boba` who is explicitly denied:
 
 ```bash
 sudo samba-tool user create lando Admin_21
@@ -539,15 +505,15 @@ sudo samba-tool user create boba Admin_21
 sudo samba-tool user list
 ```
 
-> 📸 `images/images-030_Creacion_Usuarios_bespin01.png` — user list on bespin07
+![lando and boba created successfully, user list showing both](Images/images-030_Creacion_Usuarios_bespin01.png)
+
+The `/city/trap` directory was created with a subdirectory `MPI` (author's initials as required by the project). Ownership and permissions were set, and the share was configured in `smb.conf`:
 
 ```bash
 sudo mkdir -p /city/trap/MPI
 sudo chown root:"Domain Users" /city/trap
 sudo chmod 770 /city/trap
 ```
-
-Add to `/etc/samba/smb.conf`:
 
 ```ini
 [trap]
@@ -558,62 +524,42 @@ Add to `/etc/samba/smb.conf`:
     invalid users = CLOUD07\boba
 ```
 
-```bash
-sudo systemctl restart samba-ad-dc
+![mkdir /city/trap/MPI with permissions applied](Images/images-031_Creacion_Carpetas_bespin01.png)
 
-# lando should succeed
-smbclient //localhost/trap -U lando%Admin_21
+Access was verified — lando connects successfully while boba is denied:
 
-# boba should be denied
-smbclient //localhost/trap -U boba%Admin_21
-```
-
-> 📸 `images/images-031_Creacion_Carpetas_bespin01.png` — mkdir and permissions
-> 📸 `images/images-031_Creacion_Carpetas_Y_Comprobaciones_bespin01.png` — lando in, boba denied
+![lando accesses trap (smb: \>), boba gets NT_STATUS_ACCESS_DENIED](Images/images-031_Creacion_Carpetas_Y_Comprobaciones_bespin01.png)
 
 ---
 
 ## 9. SSH Access and Process Control
 
-### 9.1 Connect from Physical Machine to srv01
+SSH access to srv01 from the physical machine was configured using VirtualBox port forwarding (host port 2222 → guest port 22). This allows managing the server remotely without needing a separate network interface.
 
-```
-ssh administrador@127.0.0.1 -p 2222
-```
-
-### 9.2 Install and Launch sl
+The `sl` package (Steam Locomotive) was installed to demonstrate POSIX process signals. When launched, it displays an animated train in the terminal. Using a second SSH session, the process was paused with `SIGSTOP` (signal 19) and then resumed with `SIGCONT` (signal 18):
 
 ```bash
-sudo apt install -y sl
+# Terminal 1 — start the train
 sl
-```
 
-### 9.3 Pause and Resume with POSIX Signals
-
-Open a second SSH terminal and:
-
-```bash
-# Find PID
-pgrep -x sl
-
-# SIGSTOP (19) — pause the process
+# Terminal 2 — find and stop the process
 kill -19 $(pgrep -x sl)
 ```
 
-> 📸 `images/images-011_Sl_Stop.png` — sl process paused with SIGSTOP
+![sl train frozen mid-animation — [1]+ Stopped sl shown in terminal](Images/images-011_Sl_Stop.png)
 
 ```bash
-# SIGCONT (18) — resume the process
+# Terminal 2 — resume the process
 kill -18 $(pgrep -x sl)
 ```
 
-> 📸 `images/images-012_Sl_Continue.png` — sl process resumed with SIGCONT
+![sl train moving again after SIGCONT](Images/images-012_Sl_Continue.png)
 
 ---
 
 ## 10. Scheduled Task with Cron
 
-### 10.1 Create the Script
+A script called `r2d2.sh` was created to automate the creation of a file called `luke.sky`. The script also writes a timestamped entry to a log file each time it runs, so execution can be verified:
 
 ```bash
 sudo nano /usr/local/bin/r2d2.sh
@@ -621,9 +567,6 @@ sudo nano /usr/local/bin/r2d2.sh
 
 ```bash
 #!/bin/bash
-# r2d2.sh — Creates luke.sky file
-# Scheduled: every day at 10:30
-
 touch /home/administrador/luke.sky
 echo "luke.sky created on $(date)" >> /var/log/r2d2.log
 ```
@@ -632,86 +575,56 @@ echo "luke.sky created on $(date)" >> /var/log/r2d2.log
 sudo chmod +x /usr/local/bin/r2d2.sh
 ```
 
-> 📸 `images/images-013_script_r2d2.png` — cat of r2d2.sh
+![r2d2.sh script content showing touch and echo commands](Images/images-013_script_r2d2.png)
 
-### 10.2 Add to crontab
+The script was added to the crontab to run automatically every day at 10:30. Cron uses the format `minute hour day month weekday command`:
 
 ```bash
 crontab -e
-```
-
-Add:
-
-```
-30 10 * * * /usr/local/bin/r2d2.sh
-```
-
-```bash
+# Added: 30 10 * * * /usr/local/bin/r2d2.sh
 crontab -l
 ```
 
-> 📸 `images/images-013_script.png` — crontab -l showing 10:30 task
-
-### 10.3 Test Manually
+To verify the script worked correctly before waiting for the scheduled time, it was run manually:
 
 ```bash
-/usr/local/bin/r2d2.sh
+sudo /usr/local/bin/r2d2.sh
 ls -la /home/administrador/luke.sky
-cat /var/log/r2d2.log
 ```
+
+![crontab showing 30 10 entry, manual execution and luke.sky file confirmed created](Images/images-013_script.png)
 
 ---
 
 ## 11. Trust Relationship Between Domains
 
-A bidirectional trust is established between `DEATHSTAR.LOCAL` (srv01) and `LAB07.LAN` (ls07).
+A bidirectional trust relationship was established between `deathstar.local` (srv01, `192.168.1.1`) and `lab07.lan` (ls07, `192.168.1.2`). This allows users from either domain to authenticate against resources in the other domain.
 
-### 11.1 Verify Connectivity Between DCs
+### Configuring DNS Forwarding
 
-```bash
-# From srv01
-ping -c 4 192.168.1.2
+For the trust to work, each domain controller needs to be able to resolve the other domain's DNS records. DNS forwarders were added to each server's `smb.conf` so queries for the other domain are forwarded to the correct DC:
 
-# From ls07
-ping -c 4 192.168.1.1
-```
-
-### 11.2 Configure DNS Forwarding
-
-**On srv01** — add to `[global]` in `/etc/samba/smb.conf`:
+On srv01, `dns forwarder` was set to forward to ls07:
 
 ```ini
 dns forwarder = 192.168.1.2 8.8.8.8
 ```
 
-**On ls07** — add to `[global]` in `/etc/samba/smb.conf`:
+![srv01 smb.conf with dns forwarder pointing to 192.168.1.2](Images/images-032_ParaElTrust_DnsForwarder_srv01.png)
+
+On ls07, `dns forwarder` was set to forward to srv01:
 
 ```ini
 dns forwarder = 192.168.1.1 8.8.8.8
 ```
 
-Restart Samba on both:
+![ls07 smb.conf with dns forwarder pointing to 192.168.1.1](Images/images-033_ParaElTrust_DnsForwarder_ls07.png)
 
-```bash
-sudo systemctl restart samba-ad-dc
-```
+After restarting Samba on both servers, cross-domain DNS resolution was verified before attempting the trust creation.
 
-> 📸 `images/images-032_ParaElTrust_Añado_DnsForwarder_a_smb-conf_srv01.png` — dns forwarder on srv01
-> 📸 `images/images-033_ParaElTrust_Añado_DnsForwarder_a_smb-conf_ls07(servidor2).png` — dns forwarder on ls07
+### Creating the Trust
 
-Verify cross-resolution:
-
-```bash
-# From srv01
-host -t SRV _ldap._tcp.lab07.lan
-
-# From ls07
-host -t SRV _ldap._tcp.deathstar.local
-```
-
-### 11.3 Create the Trust
-
-Run on srv01:
+The trust was created from srv01 using `samba-tool`. The `--type=external` and `--direction=both` flags create a bidirectional external trust, meaning both domains trust each other equally:
 
 ```bash
 sudo samba-tool domain trust create LAB07.LAN \
@@ -720,69 +633,33 @@ sudo samba-tool domain trust create LAB07.LAN \
   -U Administrator
 ```
 
-> 📸 `images/images-034_Trust_Create.png` — trust create output with WERR_OK
+The output confirmed that both the outgoing and incoming trust were validated successfully with `TRUST[WERR_OK]`:
 
-### 11.4 Verify the Trust
+![Trust creation output showing Remote TDO created, Local TDO created, and both WERR_OK validations](Images/images-034_Trust_Create.png)
+
+### Verifying the Trust
+
+The trust was verified from srv01 by listing active trusts and running a cross-domain Kerberos authentication. Successfully obtaining a Kerberos ticket for `Administrator@LAB07.LAN` from srv01 is the definitive proof that the trust is working:
 
 ```bash
 sudo samba-tool domain trust list
 sudo samba-tool domain trust validate LAB07.LAN -U Administrator
-```
-
-> ⚠️ A `NETLOGON_CONTROL_TC_VERIFY` warning during remote validation is normal with Samba 4. What matters is `TRUST[WERR_OK]` in LocalValidation.
-
-> 📸 `images/images-035_Trust_Comprobaciones_srv01.png` — trust list and validate on srv01
-> 📸 `images/images-036_Trust_Comprobaciones_ls07(SERVER2).png` — trust list on ls07
-
-### 11.5 Test Cross-Domain Authentication
-
-```bash
 kinit Administrator@LAB07.LAN
 klist
 ```
 
+> **Note:** The `NETLOGON_CONTROL_TC_VERIFY` warning that appears during remote validation is a known Samba 4 limitation and does not affect trust functionality. The important indicators are `TRUST[WERR_OK]` in LocalValidation and the successful cross-domain kinit.
+
+![Trust list showing lab07.lan Direction[BOTH], LocalValidation WERR_OK, and kinit to LAB07.LAN returning a valid ticket](Images/images-035_Trust_Comprobaciones_srv01.png)
+
+From ls07, the trust list was also verified to confirm the relationship is registered on both sides:
+
+```bash
+sudo samba-tool domain trust list
+```
+
+![ls07 trust list showing deathstar.local with Direction[BOTH]](Images/images-036_Trust_Comprobaciones_ls07.png)
+
 ---
 
-## 12. Screenshots Index
-
-| No. | File | Section | What it shows |
-|-----|------|---------|---------------|
-| 01 | `images-001_lsblk_discos` | Disks | lsblk with sda at / and sdb at /home |
-| 02 | `images-002_hostname_y_etc_hosts` | Network | hostnamectl and /etc/hosts |
-| 03 | `images-003-Netplan_configuration_srv1` | Network | Netplan config |
-| 04 | `images-004-resolv.conf_srv1` | Network | /etc/resolv.conf on srv01 |
-| 05 | `images-005-kerberos_reino` | Kerberos | Kerberos realm config |
-| 06 | `images-006-Domain_Provision_srv1` | Samba | Full domain provision output |
-| 07 | `images-007-smb.conf_srv1` | Samba | smb.conf configuration |
-| 08 | `images-008_Kerberos_pruebas_srv1` | Kerberos | klist with Administrator ticket |
-| 09 | `images-009_creacion_usuarios_carpetas` | Users | user list and group jedis |
-| 10 | `images-010_smb.conf` | Shares | smb.conf shares section |
-| 11 | `images-011_Sl_Stop` | SSH | sl paused with SIGSTOP |
-| 12 | `images-012_Sl_Continue` | SSH | sl resumed with SIGCONT |
-| 13 | `images-013_script` | Cron | crontab -l at 10:30 |
-| 14 | `images-013_script_r2d2` | Cron | cat of r2d2.sh |
-| 15 | `images-014_comprobaciones_permisos_usuarios` | Shares | smbclient access verification |
-| 16 | `images-015_Configuracion_Red_Cliente` | Client | network settings on uc01 |
-| 17 | `images-016_resolv.conf_client` | Client | /etc/resolv.conf on client |
-| 18 | `images-017_Instalacion_realmssd_Client` | Client | package installation |
-| 19 | `images-018_Realm_Discover` | Client | realm discover output |
-| 20 | `images-019_Realm_Join` | Client | realm join success |
-| 21 | `images-020_Prueba_Usuario_Cliente` | Client | realm list and id commands |
-| 22 | `images-021_Prueba_Usuarios_Cliente_v2` | Client | domain user login on GUI |
-| 23 | `images-022_Creacion_VPC` | AWS | VPC creation |
-| 24 | `images-023_Verificacion_VPC` | AWS | VPC details |
-| 25 | `images-024_Habilitar_IP_Automatica_VPC` | AWS | enabling auto-assign public IP |
-| 26 | `images-025_Grupos_De_Seguridad_Y_Reglas` | AWS | security group rules |
-| 27 | `images-026_ssh_desde_windows_a_ec2` | AWS | SSH from Windows to EC2 |
-| 28 | `images-026_ssh_hostname_etc_hosts_bespin07` | AWS | hostname and hosts on bespin07 |
-| 29 | `images-027_Aprovisionamiento_bespin01` | AWS | domain provision on bespin07 |
-| 30 | `images-028_Dns_Kinit_Bespin07` | AWS | DNS and Kerberos on bespin07 |
-| 31 | `images-029_UnMask_Status_bespin01` | AWS | samba-ad-dc status active |
-| 32 | `images-030_Creacion_Usuarios_bespin01` | AWS | user list on bespin07 |
-| 33 | `images-031_Creacion_Carpetas_bespin01` | AWS | mkdir and permissions |
-| 34 | `images-031_Creacion_Carpetas_Y_Comprobaciones_bespin01` | AWS | lando in, boba denied |
-| 35 | `images-032_ParaElTrust_Añado_DnsForwarder_a_smb-conf_srv01` | Trust | dns forwarder on srv01 |
-| 36 | `images-033_ParaElTrust_Añado_DnsForwarder_a_smb-conf_ls07(servidor2)` | Trust | dns forwarder on ls07 |
-| 37 | `images-034_Trust_Create` | Trust | trust create with WERR_OK |
-| 38 | `images-035_Trust_Comprobaciones_srv01` | Trust | trust list and validate on srv01 |
-| 39 | `images-036_Trust_Comprobaciones_ls07(SERVER2)` | Trust | trust list on ls07 |
+*Documentation by MPI — DeathStar S.A. | https://github.com/checkers23/Linux-Active-Directory*
