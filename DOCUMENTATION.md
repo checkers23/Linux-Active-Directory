@@ -289,7 +289,7 @@ The `/etc/samba/smb.conf` file was edited to define the three shares with their 
     guest ok = yes
 ```
 
-![smb.conf showing all three shares with their access rules](Images/images-010_smb_conf.png)
+![smb.conf showing all three shares with their access rules](Images/images-010.smb_conf.png)
 
 ### Making Folders Accessible via Web Browser
 
