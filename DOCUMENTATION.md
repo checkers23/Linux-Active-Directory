@@ -291,16 +291,6 @@ The `/etc/samba/smb.conf` file was edited to define the three shares with their 
 
 ![smb.conf showing all three shares with their access rules](Images/images-010_smb.conf.png)
 
-### Making Folders Accessible via Web Browser
-
-Apache was installed and symbolic links were created so the `family` and `force` folders can be browsed from a web browser, as required by the project:
-
-```bash
-sudo apt install -y apache2
-sudo ln -s /sw/family /var/www/html/family
-sudo ln -s /sw/force /var/www/html/force
-sudo systemctl enable --now apache2
-```
 
 ### Verifying Access
 
