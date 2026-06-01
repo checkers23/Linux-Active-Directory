@@ -1,4 +1,4 @@
-# 📖 Documentation — Linux Active Directory
+# 📖 Documentation — Linux Active Directory With Samba
 
 > **Author:** Miguel Pérez Ibáñez  
 > **Repository:** https://github.com/checkers23/Linux-Active-Directory
