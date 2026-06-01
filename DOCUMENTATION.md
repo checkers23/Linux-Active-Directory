@@ -116,7 +116,7 @@ nameserver 8.8.8.8
 search deathstar.local
 ```
 
-![resolv.conf pointing to 127.0.0.1 as primary DNS](Images/images-004-resolv_conf_srv1.png)
+![resolv.conf pointing to 127.0.0.1 as primary DNS](Images/images-004-resolv.conf_srv1.png)
 
 ---
 
