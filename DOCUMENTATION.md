@@ -49,7 +49,8 @@ lsblk
 df -h
 ```
 
-> 📸 `images/images-001_lsblk_discos.png` — lsblk showing sda at / and sdb at /home
+> 📸  
+> ![lsblk showing sda at / and sdb at /home](images/images-001_lsblk_discos.png)
 
 ---
 
