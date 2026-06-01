@@ -75,7 +75,7 @@ sudo nano /etc/hosts
 
 > ⚠️ Remove any line with `127.0.1.1` pointing to the old hostname.
 
-> 📸 `` — 
+
 > ![hostnamectl and /etc/hosts](Images/images-002_hostname_y_etc_hosts.png)
 
 ### 2.3 Configure Network Interfaces (Netplan)
@@ -107,7 +107,7 @@ sudo netplan apply
 ip a
 ```
 
-> 📸 `images/images-003-Netplan_configuration_srv1.png` — netplan file and ip a output
+> ![netplan file and ip a output](Images/images-003-Netplan_configuration_srv1.png)
 
 ### 2.4 Disable systemd-resolved
 
@@ -124,8 +124,8 @@ nameserver 8.8.8.8
 search deathstar.local
 ```
 
-> 📸 `images/images-004-resolv.conf_srv1.png` — /etc/resolv.conf content
 
+> ![/etc/resolv.conf content](Images/images-004-resolv.conf_srv1.png)
 ---
 
 ## 3. Samba AD DC — Installation and Provisioning
@@ -161,7 +161,7 @@ sudo samba-tool domain provision \
   --dns-backend=SAMBA_INTERNAL
 ```
 
-> 📸 `images/images-006-Domain_Provision_srv1.png` — full output of samba-tool domain provision
+> ![full output of samba-tool domain provision](Images/images-006-Domain_Provision_srv1.png)
 
 ### 3.4 Copy Kerberos Config and Enable Service
 
@@ -172,7 +172,7 @@ sudo systemctl enable --now samba-ad-dc
 sudo systemctl status samba-ad-dc
 ```
 
-> 📸 `images/images-005-kerberos_reino.png` — Kerberos realm configuration
+> ![Kerberos realm configuration](Images/images-005-kerberos_reino.png)
 
 ---
 
@@ -209,7 +209,7 @@ kinit Administrator@DEATHSTAR.LOCAL
 klist
 ```
 
-> 📸 `images/images-008_Kerberos_pruebas_srv1.png` — klist with Administrator ticket
+> ![ klist with Administrator ticket](Images/images-008_Kerberos_pruebas_srv1.png)
 
 ---
 
@@ -226,7 +226,7 @@ sudo samba-tool group list
 sudo samba-tool group listmembers jedis
 ```
 
-> 📸 `images/images-009_creacion_usuarios_carpetas.png` — user list, group list and jedis members
+>  ![user list, group list and jedis members](Images/images-009_creacion_usuarios_carpetas.png) 
 
 ---
 
@@ -293,7 +293,7 @@ Add at the end:
     guest ok = yes
 ```
 
-> 📸 `images/images-010_smb.conf.png` — smb.conf shares configuration
+> ![smb.conf shares configuration](Images/images-010_smb.conf.png)
 
 ### 6.4 Install Apache for Web Access
 
@@ -325,7 +325,7 @@ smbclient //localhost/force -U anakin%Admin_21
 smbclient //localhost/force -U yoda%Admin_21
 ```
 
-> 📸 `images/images-014_comprobaciones_permisos_usuarios.png` — smbclient access verification per user
+> ![smbclient access verification per user](Images/images-014_comprobaciones_permisos_usuarios.png)
 
 ---
 
@@ -348,8 +348,8 @@ nameserver 192.168.1.1
 search deathstar.local
 ```
 
-> 📸 `images/images-015_Configuracion_Red_Cliente.png` — network settings on uc01
-> 📸 `images/images-016_resolv.conf_client.png` — /etc/resolv.conf on client
+>  ![network settings on uc01](Images/images-015_Configuracion_Red_Cliente.png)
+> ![/etc/resolv.conf on client](Images/images-016_resolv.conf_client.png)
 
 ### 7.2 Install Required Packages
 
@@ -357,7 +357,7 @@ search deathstar.local
 sudo apt install -y realmd sssd sssd-tools adcli samba-common-bin packagekit krb5-user
 ```
 
-> 📸 `images/images-017_Instalacion_realmssd_Client.png` — package installation
+>  ![package installation](Images/images-017_Instalacion_realmssd_Client.png)
 
 ### 7.3 Discover and Join Domain
 
