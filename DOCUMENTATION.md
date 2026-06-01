@@ -31,7 +31,6 @@ After the system booted, the disk layout was verified with the following command
 
 ```bash
 lsblk
-df -h
 ```
 
 ![lsblk showing sda mounted at / and sdb at /home](Images/images-001_lsblk_discos.png)
